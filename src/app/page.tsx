@@ -9,25 +9,57 @@ import { fetchMakes, fetchModels } from "@/lib/vpicClient";
 import { findProfiles, profileKey, CarRow } from "@/lib/carDb";
 
 const fmt = (n: number, d = 1) => (Number.isFinite(n) ? n.toFixed(d) : "—");
+const normalizeNum = (s: string) => s.replace(",", ".").trim();
+const toNum = (s: string, fallback = 0) => {
+  const v = Number(normalizeNum(s));
+  return Number.isFinite(v) ? v : fallback;
+};
+
+function NumInput(props: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  stepHint?: string;
+  disabled?: boolean;
+  rightHint?: string;
+}) {
+  const { label, value, onChange, stepHint, disabled, rightHint } = props;
+  return (
+      <label className="label">
+        {label} {stepHint ? <small>({stepHint})</small> : null}
+        <input
+            type="text"
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={disabled}
+        />
+        {rightHint ? <small>{rightHint}</small> : null}
+      </label>
+  );
+}
 
 export default function Page() {
-  // Run
+  // --- Run (numeri interi: ok number) ---
   const [massKg, setMassKg] = useState<number>(1400);
   const [v1Kmh, setV1Kmh] = useState<number>(100);
   const [v2Kmh, setV2Kmh] = useState<number>(200);
-  const [timeS, setTimeS] = useState<number>(10);
-  const [distanceM, setDistanceM] = useState<number>(350);
-  const [gradePct, setGradePct] = useState<number>(0);
+
+  // --- Decimali: teniamo stringa (accetta 5.43 e 5,43) ---
+  const [timeS, setTimeS] = useState<string>("10");
+  const [distanceM, setDistanceM] = useState<string>("350");
+  const [gradePct, setGradePct] = useState<string>("0");
 
   // Params
   const [bodyType, setBodyType] = useState<BodyType>("HATCH");
   const [drivetrain, setDrivetrain] = useState<Drivetrain>("FWD_RWD");
-  const [rho, setRho] = useState<number>(DEFAULTS.rho);
-  const [crr, setCrr] = useState<number>(DEFAULTS.crr);
+
+  const [rho, setRho] = useState<string>(String(DEFAULTS.rho));
+  const [crr, setCrr] = useState<string>(String(DEFAULTS.crr));
 
   // CdA
   const [useCustomCda, setUseCustomCda] = useState<boolean>(false);
-  const [cdaCustom, setCdaCustom] = useState<number>(DEFAULTS.cda.HATCH);
+  const [cdaCustom, setCdaCustom] = useState<string>(String(DEFAULTS.cda.HATCH));
 
   // vPIC
   const [makes, setMakes] = useState<string[]>([]);
@@ -96,17 +128,17 @@ export default function Page() {
     };
   }, [make]);
 
-  // Sync selected profile CdA into state (keeps input types consistent)
+  // Sync CdA from profile into input string
   useEffect(() => {
     const val = selectedProfile?.cda?.value;
-    if (typeof val === "number" && Number.isFinite(val)) setCdaCustom(val);
+    if (typeof val === "number" && Number.isFinite(val)) setCdaCustom(String(val));
   }, [selectedProfile]);
 
   const eta = DEFAULTS.eta[drivetrain];
 
   const fallbackCda =
       useCustomCda || bodyType === "CUSTOM"
-          ? cdaCustom
+          ? toNum(cdaCustom, DEFAULTS.cda.HATCH)
           : DEFAULTS.cda[bodyType as Exclude<BodyType, "CUSTOM">];
 
   const activeCda = selectedProfile?.cda?.value ?? fallbackCda;
@@ -116,12 +148,12 @@ export default function Page() {
         massKg,
         v1Kmh,
         v2Kmh,
-        timeS,
-        distanceM,
-        gradePct,
-        rho,
+        timeS: toNum(timeS, 0),
+        distanceM: toNum(distanceM, 0),
+        gradePct: toNum(gradePct, 0),
+        rho: toNum(rho, DEFAULTS.rho),
         cda: activeCda,
-        crr,
+        crr: toNum(crr, DEFAULTS.crr),
         eta
       }),
       [massKg, v1Kmh, v2Kmh, timeS, distanceM, gradePct, rho, activeCda, crr, eta]
@@ -251,20 +283,11 @@ export default function Page() {
             </div>
 
             <div className="grid2tight">
-              <label className="label">
-                Tempo (s)
-                <input type="number" step="0.01" value={timeS} onChange={(e) => setTimeS(Number(e.target.value))} />
-              </label>
-              <label className="label">
-                Distanza (m)
-                <input type="number" value={distanceM} onChange={(e) => setDistanceM(Number(e.target.value))} />
-              </label>
+              <NumInput label="Tempo (s)" value={timeS} onChange={setTimeS} stepHint="decimali ok (5.43 o 5,43)" />
+              <NumInput label="Distanza (m)" value={distanceM} onChange={setDistanceM} stepHint="decimali ok" />
             </div>
 
-            <label className="label">
-              Pendenza media (%)
-              <input type="number" step="0.01" value={gradePct} onChange={(e) => setGradePct(Number(e.target.value))} />
-            </label>
+            <NumInput label="Pendenza media (%)" value={gradePct} onChange={setGradePct} stepHint="decimali ok" />
 
             <hr />
 
@@ -305,30 +328,19 @@ export default function Page() {
             </label>
 
             <div className="grid2tight">
-              <label className="label">
-                CdA (m²)
-                <input
-                    type="number"
-                    step="0.001"
-                    value={cdaCustom}
-                    onChange={(e) => setCdaCustom(Number(e.target.value))}
-                    disabled={!!selectedProfile || (!useCustomCda && bodyType !== "CUSTOM")}
-                />
-                <small>
-                  Attivo: {fmt(activeCda, 3)} · η={fmt(eta, 2)}
-                </small>
-              </label>
+              <NumInput
+                  label="CdA (m²)"
+                  value={cdaCustom}
+                  onChange={setCdaCustom}
+                  stepHint="decimali ok"
+                  disabled={!!selectedProfile || (!useCustomCda && bodyType !== "CUSTOM")}
+                  rightHint={`Attivo: ${fmt(activeCda, 3)} · η=${fmt(eta, 2)}`}
+              />
 
-              <label className="label">
-                Crr
-                <input type="number" step="0.0001" value={crr} onChange={(e) => setCrr(Number(e.target.value))} />
-              </label>
+              <NumInput label="Crr" value={crr} onChange={setCrr} stepHint="decimali ok" />
             </div>
 
-            <label className="label">
-              Densità aria ρ (kg/m³)
-              <input type="number" step="0.01" value={rho} onChange={(e) => setRho(Number(e.target.value))} />
-            </label>
+            <NumInput label="Densità aria ρ (kg/m³)" value={rho} onChange={setRho} stepHint="decimali ok" />
           </section>
 
           <section className="card">
