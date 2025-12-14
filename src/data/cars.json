@@ -1,16 +1,5 @@
 [
   {
-    "make": "Volkswagen",
-    "model": "Golf",
-    "series": "Mk7",
-    "yearFrom": 2013,
-    "yearTo": 2020,
-    "variant": "1.6 TDI",
-    "cda": { "value": 0.62, "min": 0.59, "max": 0.66 },
-    "notes": "valore medio, varia con cerchi/pacchetti aero",
-    "source": { "name": "Wikipedia", "url": "https://..." }
-  },
-  {
     "make": "Seat",
     "model": "Ibiza",
     "series": "6L",
@@ -18,7 +7,7 @@
     "yearTo": 2008,
     "variant": "Cupra",
     "cda": { "value": 0.68, "min": 0.65, "max": 0.72 },
-    "notes": "stima curata",
-    "source": { "name": "Inserimento manuale", "url": "" }
+    "notes": "Stima curata, migliorabile con coastdown.",
+    "source": { "name": "Manual", "url": "" }
   }
 ]
