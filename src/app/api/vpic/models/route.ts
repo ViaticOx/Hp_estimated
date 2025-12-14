@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 
 type VpicModelsResponse = { Results: Array<{ Model_Name: string }> };
 
-export const revalidate = 60 * 60 * 24;
-
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const make = (searchParams.get("make") ?? "").trim();
@@ -13,7 +11,10 @@ export async function GET(req: Request) {
     }
 
     const url = `https://vpic.nhtsa.dot.gov/api/vehicles/getmodelsformake/${encodeURIComponent(make)}?format=json`;
-    const res = await fetch(url, { next: { revalidate } });
+
+    const res = await fetch(url, {
+        next: { revalidate: 60 * 60 * 24 } // 24h
+    });
 
     if (!res.ok) {
         return NextResponse.json({ error: "VPIC models fetch failed" }, { status: 502 });
